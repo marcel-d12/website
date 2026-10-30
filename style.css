@@ -89,6 +89,7 @@ a { color: var(--accent); }
   background-image: var(--grain);
   clip-path: polygon(1% 0.6%, 52% 0%, 99.2% 1%, 100% 48%, 99.4% 99.5%, 47% 100%, 0% 99.2%, 0.8% 52%);
 }
+.photo-paper picture,
 .photo-paper img,
 .photo-placeholder {
   display: block;
