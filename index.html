@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marcel Horstmann</title>
+  <meta name="description" content="Marcel Horstmann – physicist and consultant in Jena, working on data and AI in financial services.">
+  <meta property="og:title" content="Marcel Horstmann">
+  <meta property="og:description" content="Physicist and consultant in Jena, working on data and AI in financial services.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#1c1f23">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Gochi+Hand&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+
+    <header class="hero">
+      <figure class="photo cut tilt-l">
+        <div class="paper photo-paper">
+          <!-- Foto folgt: img/marcel.jpg -->
+          <div class="photo-placeholder" aria-hidden="true">MH</div>
+        </div>
+        <span class="tape tape-a" aria-hidden="true"></span>
+        <span class="tape tape-b" aria-hidden="true"></span>
+      </figure>
+
+      <div class="hero-text">
+        <p class="note">hi, I'm</p>
+        <h1><span class="strip">Marcel Horstmann</span></h1>
+        <p class="lead">Physicist turned consultant. I work on data and AI in financial services and like building things that hold up in the real world.</p>
+        <p class="meta">Jena, Germany · Consultant at <span class="nowrap">d-fine</span></p>
+      </div>
+    </header>
+
+    <section class="cut tilt-r" aria-labelledby="about">
+      <div class="paper card">
+        <h2 id="about">About</h2>
+        <p>I studied physics in Jena and Heidelberg, where I wrote my master's thesis on heavy-quark diffusion in functional QCD. Since 2023 I have been a consultant at <span class="nowrap">d-fine</span>, working on data and regulatory projects for banks, insurers and trading firms: testing and acceptance of platform migrations, data engineering with Python, SQL and Databricks, and making the results understandable for the people who have to decide.</p>
+        <p>A lot of that work is what AI teams call evals: test catalogues, quality gates, root-cause analysis and evidence that stands up to an audit. I use AI agents every day and I'm most interested in AI that actually reaches the people using it.</p>
+        <p>Outside work you'll find me at CrossFit, at the run club or reading physics textbooks for fun.</p>
+      </div>
+    </section>
+
+    <section class="cut tilt-l" aria-labelledby="reading">
+      <div class="paper card">
+        <h2 id="reading">Worth reading</h2>
+        <ul class="list">
+          <li>
+            <span class="item-title">Marcus Aurelius – <em>Meditations</em></span>
+            <span class="item-note">Best read slowly, with a pencil.</span>
+          </li>
+          <li>
+            <span class="item-title">Peskin &amp; Schroeder – <em>An Introduction to Quantum Field Theory</em></span>
+            <span class="item-note">The textbook I'd rather read than a novel.</span>
+          </li>
+          <li>
+            <span class="item-title"><em>Lage der Nation</em> (podcast, German)</span>
+            <span class="item-note">Weekly German politics, explained calmly.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cut tilt-r" aria-labelledby="contact">
+      <div class="paper card contact">
+        <h2 id="contact">Contact</h2>
+        <p>Happy to hear from you, whether it's about AI, data, physics or a good book.</p>
+        <p class="contact-links">
+          <a class="button" id="mail" href="#contact">Email me</a>
+        </p>
+        <noscript><p>marcel.horstmann98 [at] gmail.com</p></noscript>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>© 2026 Marcel Horstmann · made of paper and code</p>
+    </footer>
+
+  </main>
+
+  <script>
+    // Adresse erst im Browser zusammensetzen, damit Spam-Bots sie nicht im Quelltext finden
+    (function () {
+      var a = document.getElementById('mail');
+      var addr = ['marcel.horstmann98', 'gmail.com'].join('@');
+      a.href = 'mailto:' + addr;
+      a.title = addr;
+    })();
+  </script>
+</body>
+</html>
