@@ -192,3 +192,21 @@ h1 { font-size: clamp(2.2rem, 6vw, 3.2rem); margin-bottom: 16px; }
   .cut, .button { transition: none; }
 }
 .nowrap { white-space: nowrap; }
+
+/* Hinweis oben: Entwurf, wie ein schief aufgeklebter Notizzettel */
+.draft-note {
+  margin: 0 auto 40px;
+  max-width: 520px;
+  padding: 10px 16px;
+  background: var(--red);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-align: center;
+  transform: rotate(-1deg);
+  clip-path: polygon(0.6% 4%, 99% 0, 100% 94%, 0 100%);
+  filter: drop-shadow(3px 4px 0 var(--shadow));
+}
+@media (max-width: 600px) {
+  .draft-note { margin-bottom: 28px; }
+}
