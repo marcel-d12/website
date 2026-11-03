@@ -30,7 +30,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* voll oder privat */ } },
 };
 
-const settings = Object.assign({ effort: "medium", sound: "standard", autoRepair: true, counterpoint: true }, store.get("km-settings", {}));
+const settings = Object.assign({ effort: "medium", sound: "standard", autoRepair: true, counterpoint: true, volume: 80 }, store.get("km-settings", {}));
 const saveSettings = () => store.set("km-settings", settings);
 
 const state = {
@@ -111,6 +111,33 @@ const cursorControl = {
   },
   onFinished() { clearPlay(); },
 };
+// Lautstärke: eigener AudioContext mit Gesamtlautstärke, den abcjs für die Wiedergabe nutzt
+// (abcjs verbindet seine Klänge mit context.destination; wir leiten das über einen GainNode um).
+const master = (() => {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  try {
+    const ctx = new AC();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    Object.defineProperty(ctx, "destination", { get: () => gain, configurable: true });
+    ABCJS.synth.registerAudioContext(ctx);
+    return { ctx, gain };
+  } catch (e) { return null; }
+})();
+let lastVolume = settings.volume || 80;
+function setVolume(v, persist = true) {
+  v = Math.max(0, Math.min(100, Math.round(v)));
+  if (master) master.gain.gain.setTargetAtTime(Math.pow(v / 100, 2), master.ctx.currentTime, 0.02);
+  $("#volume").value = String(v);
+  $("#btnMute").classList.toggle("muted", v === 0);
+  $("#btnMute").setAttribute("aria-label", v === 0 ? "Ton an" : "Ton aus");
+  $("#volWaves").style.display = v === 0 ? "none" : "";
+  if (v > 0) lastVolume = v;
+  settings.volume = v;
+  if (persist) saveSettings();
+}
+
 function clearPlay() { $$("#paper .km-play").forEach((el) => el.classList.remove("km-play")); }
 function keepVisible(el) {
   const sheet = $("#sheet");
@@ -852,6 +879,8 @@ function showTab(name) {
 // ---------------------------------------------------------------- Start
 function wire() {
   $("#btnCompose").addEventListener("click", compose);
+  $("#volume").addEventListener("input", (e) => setVolume(+e.target.value));
+  $("#btnMute").addEventListener("click", () => setVolume(settings.volume > 0 ? 0 : lastVolume || 80));
   $("#btnRevise").addEventListener("click", revise);
   $("#btnSuggest").addEventListener("click", suggest);
   $("#btnRepair").addEventListener("click", () => repair());
@@ -897,6 +926,8 @@ function init() {
   setupSelection();
   if (ABCJS.synth.supportsAudio()) synthControl.load("#audio", cursorControl, { displayLoop: true, displayRestart: true, displayPlay: true, displayProgress: true, displayWarp: true });
   else $("#audio").textContent = "Dieser Browser kann keine Audiowiedergabe.";
+  setVolume(settings.volume ?? 80, false);
+  if (!master) $(".volume").hidden = true;
   const fromLink = readAccessFromHash();
   updateAccessBadge();
   if (fromLink && access.mode()) toast("Demo-Zugang aktiv. Viel Spaß beim Komponieren!", "ok");

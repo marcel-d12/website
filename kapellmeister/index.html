@@ -71,7 +71,13 @@
           <div class="status-text"><strong id="statusTitle"></strong> <span id="statusTime" class="muted"></span> <span id="statusProgress" class="muted"></span><div id="statusThinking" class="thinking"></div></div>
           <button id="btnCancel" class="ghost small" type="button">Abbrechen</button>
         </div>
-        <div id="audio" class="transport"></div>
+        <div class="transport-row">
+          <div id="audio" class="transport"></div>
+          <div class="volume">
+            <button id="btnMute" class="icon vol-icon" type="button" aria-label="Ton aus" title="Ton aus/an"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="volWaves" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+            <input id="volume" type="range" min="0" max="100" step="1" value="80" aria-label="Lautstärke" title="Lautstärke">
+          </div>
+        </div>
         <div id="sheet" class="sheet" title="Klicken: Takt markieren · Ziehen: Bereich markieren · Umschalt: erweitern">
           <div id="paper"></div>
           <div id="overlay" aria-hidden="true"></div>
