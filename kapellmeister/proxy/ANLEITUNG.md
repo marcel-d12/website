@@ -29,7 +29,7 @@ abgerechnet (Guthaben im Voraus).
 ## 3. App verbinden
 
 Die Worker-Adresse in `js/config.js` bei `proxyUrl` eintragen (oder Claude schicken, dann trägt Claude sie ein).
-Bis dahin funktioniert auch ein Link mit beidem:
+Eingetragen seit 04.11.: `https://kapellmeister.marcel-horstmann98.workers.dev`. Für einen anderen Worker funktioniert auch ein Link mit beidem:
 
 ```
 https://marcelhorstmann.com/kapellmeister/#code=DEIN-CODE&proxy=https://kapellmeister.<name>.workers.dev

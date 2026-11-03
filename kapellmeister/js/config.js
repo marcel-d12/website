@@ -2,7 +2,7 @@
 // (siehe proxy/ANLEITUNG.md). Leer lassen, solange kein Proxy läuft: Dann fragt die App nach
 // einem eigenen API-Schlüssel, der nur im Browser bleibt.
 export const CONFIG = {
-  proxyUrl: "",
+  proxyUrl: "https://kapellmeister.marcel-horstmann98.workers.dev",
   model: "claude-opus-5-5",
   maxTokens: 32000,
   soundFonts: {
