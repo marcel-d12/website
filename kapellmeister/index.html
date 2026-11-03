@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Kapellmeister · KI-Komponierwerkstatt</title>
+  <meta name="description" content="Kapellmeister: klassische Musik im Stil gemeinfreier Komponisten mit Claude komponieren, in der Partitur markieren, überarbeiten und auf Spielbarkeit prüfen.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vendor/abcjs-basic-min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Kapellmeister, Startseite">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><polygon points="3,6 60,2 62,58 5,62" fill="#e3a63b"/><path d="M18 46 L46 14" stroke="#1c1f23" stroke-width="5" stroke-linecap="round"/><circle cx="18" cy="46" r="6" fill="#1c1f23"/></svg>
+      <span class="brand-text"><strong>Kapellmeister</strong><small>KI-Komponierwerkstatt</small></span>
+    </a>
+    <div class="top-actions">
+      <button id="accessBadge" class="access off" type="button">Claude nicht verbunden</button>
+      <button id="btnAbout" class="ghost" type="button">Über</button>
+      <button id="btnSettings" class="ghost" type="button" aria-label="Einstellungen">Einstellungen</button>
+    </div>
+  </header>
+
+  <main>
+    <details id="composeCard" class="card compose" open>
+      <summary><span class="card-title">Neues Stück komponieren</span><span class="hint">Stil, Gattung, Besetzung wählen</span></summary>
+      <form class="compose-grid" onsubmit="return false">
+        <label>Stil von<select id="fComposer"></select></label>
+        <label>Gattung / Form<select id="fForm"></select></label>
+        <label>Besetzung<select id="fEnsemble"></select></label>
+        <label>Tonart<select id="fKey"></select></label>
+        <label>Taktart<select id="fMeter"></select></label>
+        <label>Tempo<select id="fTempo"></select></label>
+        <label>Länge<select id="fBars"><option value="8">8 Takte</option><option value="12">12 Takte</option><option value="16" selected>16 Takte</option><option value="24">24 Takte</option><option value="32">32 Takte</option></select></label>
+        <label>Vortragszeichen<select id="fExpression"></select></label>
+        <fieldset id="customEnsemble" class="custom" hidden><legend>Eigene Besetzung</legend></fieldset>
+        <div class="compose-bottom">
+          <label class="wish">Wunsch an Claude (optional)<textarea id="fWish" rows="1" placeholder="z. B. Thema zuerst in der Oboe, Mittelteil in Moll, Pizzicato-Begleitung"></textarea></label>
+          <div class="compose-go"><button id="btnCompose" class="primary big" type="button" data-claude>Komponieren</button><span class="hint">dauert 1 bis 3 Minuten</span></div>
+        </div>
+      </form>
+    </details>
+
+    <div class="workspace">
+      <section class="stage card" aria-label="Partitur">
+        <div class="stage-head">
+          <h1 id="pieceTitle">Kapellmeister</h1>
+          <div class="toolbar">
+            <details class="menu" id="exampleMenu"><summary class="ghost">Beispiele</summary>
+              <div class="menu-list"><button type="button" data-example="menuett">Menuett in G-Dur (Streichquartett)</button><button type="button" data-example="sinfonia">Sinfonia in D-Dur (klassisches Orchester)</button><button type="button" data-example="pruefdemo">Prüf-Demo: typische KI-Fehler</button></div>
+            </details>
+            <label class="ghost filebtn">Importieren<input id="fileInput" type="file" accept=".musicxml,.xml,.mxl,.abc,.txt"></label>
+            <button id="btnCheck" class="ghost" type="button">Prüfen</button>
+            <details class="menu" id="exportMenu"><summary class="ghost">Export</summary>
+              <div class="menu-list">
+                <button type="button" data-export="musicxml">MusicXML (MuseScore, Sibelius, Finale)</button>
+                <button type="button" data-export="midi">MIDI</button>
+                <button type="button" data-export="wav">Audio (WAV)</button>
+                <button type="button" data-export="pdf">PDF (über Drucken)</button>
+                <button type="button" data-export="svg">Notenbild (SVG)</button>
+                <button type="button" data-export="abc">ABC-Quelltext</button>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div id="pieceNotes" class="notes" hidden></div>
+        <div id="status" class="status" hidden role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="status-text"><strong id="statusTitle"></strong> <span id="statusTime" class="muted"></span> <span id="statusProgress" class="muted"></span><div id="statusThinking" class="thinking"></div></div>
+          <button id="btnCancel" class="ghost small" type="button">Abbrechen</button>
+        </div>
+        <div id="audio" class="transport"></div>
+        <div id="sheet" class="sheet" title="Klicken: Takt markieren · Ziehen: Bereich markieren · Umschalt: erweitern">
+          <div id="paper"></div>
+          <div id="overlay" aria-hidden="true"></div>
+          <div id="band" class="band" aria-hidden="true"></div>
+        </div>
+        <p class="sheet-hint">Klicken markiert einen Takt einer Stimme, Ziehen markiert einen Bereich, mit Umschalt erweitern. Dateien (MusicXML, .mxl, ABC) kann man auf die Partitur ziehen.</p>
+        <details class="source"><summary>ABC-Quelltext anzeigen und bearbeiten</summary>
+          <textarea id="abcSource" rows="14" spellcheck="false" aria-label="ABC-Quelltext"></textarea>
+          <button id="btnApplySource" class="ghost" type="button">Änderungen übernehmen</button>
+        </details>
+      </section>
+
+      <aside class="workshop card" aria-label="Werkstatt">
+        <div class="tabs" role="tablist">
+          <button role="tab" data-tab="revise" type="button">Bearbeiten</button>
+          <button role="tab" data-tab="check" type="button">Prüfung <span id="tabCheckBadge" class="badge ok">✓</span></button>
+          <button role="tab" data-tab="continue" type="button">Weiter</button>
+          <button role="tab" data-tab="ask" type="button">Fragen</button>
+          <button role="tab" data-tab="history" type="button">Verlauf <span id="versionCount" class="badge">0</span></button>
+        </div>
+
+        <div class="tabpane" data-pane="revise">
+          <div id="selectionBox" class="selection" hidden>
+            <div class="sel-head"><span class="label">Auswahl</span><span id="selectionLabel"></span><button id="btnClearSel" class="icon" type="button" aria-label="Auswahl aufheben">×</button></div>
+            <textarea id="markComment" rows="2" placeholder="Was soll sich hier ändern? z. B. „Flöte eine Oktave tiefer, mehr Spannung“"></textarea>
+            <div class="chips">
+              <button class="chip" type="button" data-chip="Spielbarer machen.">spielbarer</button>
+              <button class="chip" type="button" data-chip="Mehr Dynamik und Artikulation.">mehr Ausdruck</button>
+              <button class="chip" type="button" data-chip="Harmonisch interessanter.">Harmonik</button>
+              <button class="chip" type="button" data-chip="Stimmführung verbessern.">Stimmführung</button>
+              <button class="chip" type="button" data-chip="Melodie variieren.">variieren</button>
+              <button class="chip" type="button" data-chip="Anders instrumentieren.">Instrumentation</button>
+            </div>
+            <div class="row"><button id="btnAddMark" class="primary small" type="button">Anmerkung hinzufügen</button><button id="btnAskSel" class="ghost small" type="button">Dazu eine Frage</button></div>
+          </div>
+          <h2>Anmerkungen in der Partitur</h2>
+          <p id="markEmpty" class="muted">Noch keine. Markiere Takte direkt in den Noten und schreib dazu, was Claude ändern soll.</p>
+          <ol id="markList" class="marks"></ol>
+          <label class="block">Allgemeiner Wunsch<textarea id="reviseText" rows="2" placeholder="z. B. „Schluss dramatischer, Hörner im Tutti stärker“"></textarea></label>
+          <div class="row"><button id="btnRevise" class="primary" type="button" data-claude>Überarbeiten</button><button id="btnSuggest" class="ghost" type="button" data-claude>Verbesserungsvorschläge</button></div>
+          <div id="suggestBox" class="suggest" hidden></div>
+        </div>
+
+        <div class="tabpane" data-pane="check" hidden>
+          <p id="checkSummary" class="summary"></p>
+          <p class="muted small-text">Geprüft werden Tonumfang je Instrument (notiert), Mehrstimmigkeit (Bläser einstimmig, Doppelgriffe, Griffweite), vollständige Takte, Atempausen, Pauken und offene Parallelen.</p>
+          <ul id="issueList" class="issues"></ul>
+          <button id="btnRepair" class="primary" type="button" data-claude disabled>Probleme von Claude beheben lassen</button>
+        </div>
+
+        <div class="tabpane" data-pane="continue" hidden>
+          <h2>Frage-Antwort-Spiel</h2>
+          <p class="muted">Claude schlägt drei Fortsetzungen in verschiedene Richtungen vor. Du hörst sie an und übernimmst die beste.</p>
+          <label class="block">Länge der Fortsetzung<select id="contBars"><option value="2">2 Takte</option><option value="4" selected>4 Takte</option><option value="8">8 Takte</option></select></label>
+          <button id="btnContinue" class="primary" type="button" data-claude>Drei Fortsetzungen vorschlagen</button>
+        </div>
+
+        <div class="tabpane" data-pane="ask" hidden>
+          <h2>Fragen zur Partitur</h2>
+          <p class="muted">z. B. „Welche Harmonien stehen in T. 5–8?“, „Warum klingt der Schluss so offen?“, „Ist das typisch für Mozart?“. Markierte Stellen werden mitgeschickt.</p>
+          <div id="chatLog" class="chat"></div>
+          <textarea id="askText" rows="2" placeholder="Frage eingeben, Enter zum Senden"></textarea>
+          <button id="btnAsk" class="primary" type="button" data-claude>Fragen</button>
+        </div>
+
+        <div class="tabpane" data-pane="history" hidden>
+          <h2>Versionen</h2>
+          <p class="muted">Jede Komposition, Überarbeitung und Korrektur ist eine Version. Klick stellt sie wieder her.</p>
+          <ol id="versionList" class="versions"></ol>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>Ein Prototyp von <a href="https://marcelhorstmann.com">Marcel Horstmann</a>, gebaut mit Claude.</span>
+    <span>Notensatz und Klang: abcjs · MusicXML-Import: xml2abc · KI: Claude (Anthropic)</span>
+  </footer>
+
+  <dialog id="settingsDialog" class="dialog">
+    <form method="dialog" id="settingsForm">
+      <h2>Einstellungen</h2>
+      <p id="settingsReason" class="callout" hidden></p>
+      <fieldset>
+        <legend>Zugang zu Claude</legend>
+        <label>Demo-Code<input id="setCode" type="text" autocomplete="off" placeholder="steht in der Einladung"></label>
+        <label>oder eigener Anthropic-API-Schlüssel<input id="setKey" type="password" autocomplete="off" placeholder="sk-ant-…"></label>
+        <p class="muted small-text">Ein eigener Schlüssel bleibt nur in diesem Browser gespeichert und geht direkt an Anthropic.</p>
+        <label id="proxyRow" hidden>Proxy-Adresse<input id="setProxy" type="url" autocomplete="off"></label>
+      </fieldset>
+      <fieldset>
+        <legend>Komposition</legend>
+        <label>Gründlichkeit<select id="setEffort"><option value="low">schnell</option><option value="medium">ausgewogen</option><option value="high">gründlich (langsamer)</option></select></label>
+        <label class="check"><input id="setAutoRepair" type="checkbox"> Nach jeder Komposition prüfen und Fehler automatisch korrigieren</label>
+        <label class="check"><input id="setCounterpoint" type="checkbox"> Satzlehre-Hinweise (Quint- und Oktavparallelen)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Klang</legend>
+        <label>Instrumentenklänge<select id="setSound"><option value="standard">Standard (FluidR3, lädt schneller)</option><option value="hochwertig">Hochwertig (MusyngKite, größer)</option></select></label>
+      </fieldset>
+      <div class="row end"><button type="button" class="ghost" data-close>Abbrechen</button><button type="submit" class="primary">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="aboutDialog" class="dialog wide">
+    <h2>Über Kapellmeister</h2>
+    <p>Kapellmeister komponiert mit Claude neue Musik im Stil gemeinfreier Komponistinnen und Komponisten und schreibt sie als echte Partitur: mit Dynamik, Gabeln, Bögen, Staccato, Akzenten, Verzierungen, Strichbezeichnungen und Ausdrucksangaben, von Klavier und Choral bis zum großen romantischen Orchester.</p>
+    <h3>Was es anders macht</h3>
+    <ul>
+      <li><strong>Nachprompten in der Partitur:</strong> Takte und Stimmen direkt in den Noten markieren, kommentieren und gezielt überarbeiten lassen.</li>
+      <li><strong>Spielbarkeitsprüfung:</strong> Tonumfänge je Instrument, einstimmige Bläser, Doppelgriffe, vollständige Takte, Atempausen, Pauken, Parallelen. Fehler erscheinen rot in den Noten; Claude kann sie automatisch beheben.</li>
+      <li><strong>Verbesserungsvorschläge</strong> wie von einem Tonsatzlehrer, einzeln übernehmbar.</li>
+      <li><strong>Frage-Antwort-Spiel:</strong> drei Fortsetzungen in verschiedene Richtungen anhören und auswählen.</li>
+      <li><strong>Fragen zur Partitur</strong>, z. B. zu Harmonik und Form.</li>
+      <li><strong>Import und Export:</strong> MusicXML und .mxl rein; MusicXML, MIDI, WAV, PDF, SVG und ABC raus. Jede Version bleibt im Verlauf.</li>
+    </ul>
+    <h3>Technik</h3>
+    <p>Claude (Anthropic) schreibt ABC-Notation; abcjs setzt die Noten und spielt sie mit gesampelten Instrumenten ab. Prüfung und MusicXML-Export laufen im Browser. Die Partitur wird zur Bearbeitung an die Anthropic-API geschickt; auf dieser Website wird nichts gespeichert, der Verlauf liegt nur im eigenen Browser.</p>
+    <p class="muted">Angeregt durch Quill aus dem Weimarer Projekt „Musik-Automat“ (Hochschule für Musik Franz Liszt Weimar und Swansonic). Kapellmeister ist ein unabhängiger Prototyp und steht in keiner Verbindung zu diesen Projekten.</p>
+    <div class="row end"><button type="button" class="primary" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="contDialog" class="dialog wide">
+    <h2>Drei Fortsetzungen</h2>
+    <div id="contTabs" class="cont-tabs" role="tablist"></div>
+    <div id="contPanes"></div>
+    <div class="row end"><button type="button" class="ghost" data-close>Schließen</button></div>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
