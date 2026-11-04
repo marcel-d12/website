@@ -7,23 +7,23 @@
   <title>Kapellmeister · KI-Komponierwerkstatt</title>
   <meta name="description" content="Kapellmeister: klassische Musik im Stil gemeinfreier Komponisten mit Claude komponieren, in der Partitur markieren, überarbeiten und auf Spielbarkeit prüfen.">
   <!-- Version: bei jedem Update hier, in version.json und in den ?v= unten gleich hochzählen -->
-  <meta name="km-version" content="2026-11-04.6">
+  <meta name="km-version" content="2026-11-04.7">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/app.css?v=2026-11-04.6">
+  <link rel="stylesheet" href="css/app.css?v=2026-11-04.7">
   <script src="vendor/abcjs-basic-min.js?v=6.7.2"></script>
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=2026-11-04.6",
-      "./js/config.js": "./js/config.js?v=2026-11-04.6",
-      "./js/composers.js": "./js/composers.js?v=2026-11-04.6",
-      "./js/instruments.js": "./js/instruments.js?v=2026-11-04.6",
-      "./js/prompts.js": "./js/prompts.js?v=2026-11-04.6",
-      "./js/score.js": "./js/score.js?v=2026-11-04.6",
-      "./js/checker.js": "./js/checker.js?v=2026-11-04.6",
-      "./js/musicxml.js": "./js/musicxml.js?v=2026-11-04.6",
-      "./js/claude.js": "./js/claude.js?v=2026-11-04.6",
-      "./js/examples.js": "./js/examples.js?v=2026-11-04.6",
+      "./js/app.js": "./js/app.js?v=2026-11-04.7",
+      "./js/config.js": "./js/config.js?v=2026-11-04.7",
+      "./js/composers.js": "./js/composers.js?v=2026-11-04.7",
+      "./js/instruments.js": "./js/instruments.js?v=2026-11-04.7",
+      "./js/prompts.js": "./js/prompts.js?v=2026-11-04.7",
+      "./js/score.js": "./js/score.js?v=2026-11-04.7",
+      "./js/checker.js": "./js/checker.js?v=2026-11-04.7",
+      "./js/musicxml.js": "./js/musicxml.js?v=2026-11-04.7",
+      "./js/claude.js": "./js/claude.js?v=2026-11-04.7",
+      "./js/examples.js": "./js/examples.js?v=2026-11-04.7",
       "./vendor/anthropic-sdk.min.js": "./vendor/anthropic-sdk.min.js?v=0.135.0"
     }
   }
@@ -33,7 +33,7 @@
   <header class="topbar">
     <a class="brand" href="./" aria-label="Kapellmeister, Startseite">
       <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><polygon points="3,6 60,2 62,58 5,62" fill="#e3a63b"/><path d="M18 46 L46 14" stroke="#1c1f23" stroke-width="5" stroke-linecap="round"/><circle cx="18" cy="46" r="6" fill="#1c1f23"/></svg>
-      <span class="brand-text"><strong>Kapellmeister</strong><small>KI-Komponierwerkstatt</small></span>
+      <span class="brand-text"><strong>Kapellmeister</strong><small>KI-Komponierwerkstatt · <span class="app-version">Version <span id="appVersion">2026-11-04.7</span></span></small></span>
     </a>
     <div class="top-actions">
       <button id="accessBadge" class="access off" type="button">Claude nicht verbunden</button>

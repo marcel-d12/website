@@ -1032,6 +1032,7 @@ function init() {
     setAbc(normalizeAbc(ex.abc), { kind: "beispiel", label: `Beispiel: ${ex.label}` });
   }
   showTab("revise");
+  if (APP_VERSION) $("#appVersion").textContent = APP_VERSION;
   setTimeout(checkForUpdate, 4000);
   setInterval(checkForUpdate, 10 * 60 * 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
