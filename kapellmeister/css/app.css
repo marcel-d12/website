@@ -270,6 +270,7 @@ textarea { resize: vertical; }
 .toast { background: var(--paper-2); padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border-left: 4px solid var(--accent); font-size: 0.9rem; }
 .toast.error { border-left-color: var(--red); }
 .toast.ok { border-left-color: var(--green); }
+.toast.update { display: flex; gap: 12px; align-items: center; border-left-color: var(--accent); }
 
 .foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 20px 20px; color: var(--ink-soft); font-size: 0.8rem; }
 

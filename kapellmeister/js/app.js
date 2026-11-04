@@ -195,7 +195,13 @@ function render({ check = true } = {}) {
   if (check) runCheck();
   applySelectionHighlight();
   requestAnimationFrame(drawMarkings);
-  if (ABCJS.synth.supportsAudio()) synthControl.setTune(state.vo, false, audioParams()).catch((e) => console.warn("Audio:", e));
+  if (ABCJS.synth.supportsAudio()) {
+    // abcjs merkt sich „schon geladen“ und spielte sonst nach einem Wechsel das alte Stück weiter
+    if (synthControl.timer && synthControl.timer.stop) synthControl.timer.stop();
+    synthControl.isLoaded = false;
+    clearPlay();
+    synthControl.setTune(state.vo, false, audioParams()).catch((e) => console.warn("Audio:", e));
+  }
   $("#abcSource").value = state.abc;
 }
 
@@ -1026,6 +1032,26 @@ function init() {
     setAbc(normalizeAbc(ex.abc), { kind: "beispiel", label: `Beispiel: ${ex.label}` });
   }
   showTab("revise");
+  setTimeout(checkForUpdate, 4000);
+  setInterval(checkForUpdate, 10 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
+}
+
+// Neue Version der Seite erkennen (GitHub Pages hält Dateien bis zu 10 Minuten im Zwischenspeicher)
+const APP_VERSION = ($('meta[name="km-version"]') || {}).content || "";
+let updateShown = false;
+async function checkForUpdate() {
+  if (updateShown || !APP_VERSION) return;
+  try {
+    const r = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) return;
+    const { version } = await r.json();
+    if (!version || version === APP_VERSION) return;
+    updateShown = true;
+    $("#toasts").append(h("div", { class: "toast update", role: "status" },
+      h("span", {}, "Es gibt eine neue Version von Kapellmeister."),
+      h("button", { class: "primary small", type: "button", onclick: () => location.reload() }, "Neu laden")));
+  } catch (e) { /* offline oder gesperrt */ }
 }
 
 init();
