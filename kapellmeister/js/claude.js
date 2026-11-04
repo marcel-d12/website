@@ -45,6 +45,16 @@ export function readAccessFromHash() {
   return changed;
 }
 
+// Einmal pro Sitzung melden, dass die Seite mit Demo-Zugang geöffnet wurde (Benachrichtigung über den Proxy)
+export function announceVisit() {
+  if (access.mode() !== "proxy") return;
+  try {
+    if (sessionStorage.getItem("km-visit")) return;
+    sessionStorage.setItem("km-visit", "1");
+  } catch (e) { /* privat */ }
+  fetch(access.proxyUrl.replace(/\/+$/, "") + "/visit", { method: "POST", headers: { "x-demo-code": access.code } }).catch(() => {});
+}
+
 function client() {
   const mode = access.mode();
   if (mode === "key") {

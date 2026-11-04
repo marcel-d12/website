@@ -6,7 +6,7 @@ import { generatePrompt, revisePrompt, repairInstruction, suggestPrompt, SUGGEST
 import { extractTag, normalizeAbc, renderScore, buildModel, excerpt, appendContinuation, withBarComments, stripSetup, titleOf, fileSafe, partialAbc, parsePatches, applyPatches } from "./score.js";
 import { checkScore, summarize } from "./checker.js";
 import { toMusicXML } from "./musicxml.js";
-import { ask, access, readAccessFromHash, EngineError } from "./claude.js";
+import { ask, access, readAccessFromHash, announceVisit, EngineError } from "./claude.js";
 import { EXAMPLES } from "./examples.js";
 
 const ABCJS = window.ABCJS;
@@ -1023,6 +1023,7 @@ function init() {
   setVolume(settings.volume ?? 80, false);
   if (!master) $(".volume").hidden = true;
   const fromLink = readAccessFromHash();
+  announceVisit();
   updateAccessBadge();
   if (fromLink && access.mode()) toast("Demo-Zugang aktiv. Viel Spaß beim Komponieren!", "ok");
   if (state.versions.length && state.versions[state.current]) restoreVersion(state.current);

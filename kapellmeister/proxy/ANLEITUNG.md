@@ -45,6 +45,21 @@ alles durch den neuen Inhalt von
 https://raw.githubusercontent.com/marcel-d12/website/main/kapellmeister/proxy/worker.js ersetzen und **Deploy** klicken.
 Die Secrets bleiben erhalten.
 
+## Benachrichtigung bei Nutzung (seit 04.11.)
+
+Der Worker meldet, wenn jemand die Seite mit Demo-Code öffnet (höchstens alle 6 Stunden pro Code) und wenn Claude
+genutzt wird (höchstens alle 15 Minuten pro Code, mit Funktion, z. B. „komponiert Choral im Stil von Bach“).
+
+- **Discord:** eigenen Server oder Kanal anlegen → Kanal-Einstellungen → **Integrationen → Webhooks → Neuer Webhook**
+  → **Webhook-URL kopieren**.
+- **oder ntfy:** App „ntfy“ installieren, ein schwer zu erratendes Thema abonnieren, z. B. `kapellmeister-7f3k9q`;
+  die Adresse ist dann `https://ntfy.sh/kapellmeister-7f3k9q`.
+
+In Cloudflare unter **Variables and Secrets** eintragen:
+
+- `PING_URL` (Secret) = die Webhook-URL bzw. ntfy-Adresse
+- `PING_IGNORE` (optional) = eigene Test-Codes, die keine Meldung auslösen sollen, z. B. `marcel-test-91`
+
 ## Kosten (Schätzung, Opus 5.5: 4 $ pro Million Eingabe-, 20 $ pro Million Ausgabe-Token)
 
 | Aktion | ungefähr |
