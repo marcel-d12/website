@@ -104,13 +104,44 @@ function readForm() {
 
 // ---------------------------------------------------------------- Partitur
 const synthControl = new ABCJS.synth.SynthController();
+// Abspielmarke: Linie durch das System, hinterlegter Takt, klingende Noten rot, Taktnummer neben der Wiedergabe
+const SVGNS = "http://www.w3.org/2000/svg";
 const cursorControl = {
   onStart() { clearPlay(); },
   onEvent(ev) {
-    clearPlay();
-    const els = (ev.elements || []).flat();
+    if (ev.measureStart && ev.left === null) return; // zweiter Teil eines Haltebogens über den Taktstrich
+    clearPlay(false);
+    const els = (ev.elements || []).flat().filter(Boolean);
     els.forEach((el) => el.classList && el.classList.add("km-play"));
-    if (els[0]) keepVisible(els[0]);
+    const svg = $("#paper svg");
+    if (!svg || ev.left === undefined || ev.left === null) return;
+    // Takt bestimmen und hinterlegen
+    const cls = (els[0] && els[0].getAttribute && els[0].getAttribute("class")) || "";
+    const mm = (cls.match(/abcjs-mm(\d+)/) || [])[1];
+    const line = (cls.match(/abcjs-l(\d+)/) || [])[1];
+    if (mm !== undefined && line !== undefined) {
+      let x1 = Infinity;
+      let x2 = -Infinity;
+      for (const n of svg.querySelectorAll(`.abcjs-mm${mm}.abcjs-l${line}`)) {
+        try { const b = n.getBBox(); if (b.width || b.height) { x1 = Math.min(x1, b.x); x2 = Math.max(x2, b.x + b.width); } } catch (e) { /* unsichtbar */ }
+      }
+      if (isFinite(x1)) {
+        let rect = svg.querySelector(".km-measure");
+        if (!rect) { rect = document.createElementNS(SVGNS, "rect"); rect.setAttribute("class", "km-measure"); svg.insertBefore(rect, svg.firstChild); }
+        rect.setAttribute("x", x1 - 8);
+        rect.setAttribute("width", x2 - x1 + 16);
+        rect.setAttribute("y", ev.top - 4);
+        rect.setAttribute("height", ev.height + 8);
+      }
+      if (state.model) $("#playPos").textContent = `Takt ${state.model.label(+mm)}`;
+    }
+    let cursor = svg.querySelector(".km-cursor");
+    if (!cursor) { cursor = document.createElementNS(SVGNS, "line"); cursor.setAttribute("class", "km-cursor"); svg.appendChild(cursor); }
+    cursor.setAttribute("x1", ev.left - 3);
+    cursor.setAttribute("x2", ev.left - 3);
+    cursor.setAttribute("y1", ev.top - 4);
+    cursor.setAttribute("y2", ev.top + ev.height + 4);
+    keepVisible(cursor);
   },
   onFinished() { clearPlay(); },
 };
@@ -141,7 +172,13 @@ function setVolume(v, persist = true) {
   if (persist) saveSettings();
 }
 
-function clearPlay() { $$("#paper .km-play").forEach((el) => el.classList.remove("km-play")); }
+function clearPlay(all = true) {
+  $$("#paper .km-play").forEach((el) => el.classList.remove("km-play"));
+  if (all) {
+    for (const el of $$("#paper .km-cursor, #paper .km-measure")) el.parentNode.removeChild(el);
+    $("#playPos").textContent = "";
+  }
+}
 function keepVisible(el) {
   const sheet = $("#sheet");
   const r = el.getBoundingClientRect();
@@ -772,6 +809,7 @@ async function exportAs(kind) {
       svg.setAttribute("width", vb[2]);
       svg.setAttribute("height", vb[3]);
       svg.querySelectorAll(".km-sel, .km-play, .km-err, .km-warn, .km-info").forEach((el) => el.classList.remove("km-sel", "km-play", "km-err", "km-warn", "km-info"));
+      for (const el of svg.querySelectorAll(".km-cursor, .km-measure")) el.parentNode.removeChild(el);
       download(`${name}.svg`, `<?xml version="1.0" encoding="UTF-8"?>\n` + svg.outerHTML, "image/svg+xml");
     } else if (kind === "wav") {
       toast("WAV wird berechnet (Klänge laden, das kann etwas dauern) …");

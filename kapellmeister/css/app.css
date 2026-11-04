@@ -145,6 +145,8 @@ textarea { resize: vertical; }
 #paper .km-warn, #paper .km-warn path { fill: var(--warn); color: var(--warn); }
 #paper .km-info, #paper .km-info path { fill: var(--info); color: var(--info); }
 #paper .km-play, #paper .km-play path { fill: var(--play); color: var(--play); }
+#paper .km-cursor { stroke: var(--play); stroke-width: 3; stroke-linecap: round; pointer-events: none; }
+#paper .km-measure { fill: rgba(216, 88, 74, 0.13); stroke: none; pointer-events: none; }
 .sheet-hint { color: var(--ink-soft); font-size: 0.8rem; margin: 8px 0 0; }
 .source { margin-top: 10px; }
 .source summary { cursor: pointer; color: var(--ink-soft); font-size: 0.9rem; }
@@ -153,6 +155,8 @@ textarea { resize: vertical; }
 /* Wiedergabe (abcjs-Steuerung) und Lautstärke */
 .transport-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px; }
 .transport { flex: 1; min-width: 0; }
+.play-pos { display: flex; align-items: center; justify-content: center; min-width: 76px; padding: 0 10px; background: #1f2328; color: var(--accent); font-weight: 800; font-size: 0.9rem; white-space: nowrap; }
+.play-pos:empty { display: none; }
 .volume { display: flex; align-items: center; gap: 6px; background: #1f2328; padding: 0 10px 0 4px; height: 40px; }
 .vol-icon { width: 34px; height: 34px; padding: 6px; color: var(--ink); }
 .vol-icon svg { width: 100%; height: 100%; display: block; }
