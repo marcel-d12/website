@@ -15,8 +15,8 @@ const DEFAULT_ORIGINS = [
 ];
 const ALLOWED_MODELS = ["claude-opus-5-5"];
 const MAX_TOKENS = 32000;
-const ALLOWED_BETAS = ["server-side-fallback-2026-07-01"];
-const ALLOWED_FIELDS = ["model", "max_tokens", "system", "messages", "thinking", "output_config", "stream", "fallbacks", "metadata"];
+const ALLOWED_BETAS = ["server-side-fallback-2026-07-01", "fast-mode-2026-02-01"];
+const ALLOWED_FIELDS = ["model", "max_tokens", "system", "messages", "thinking", "output_config", "stream", "fallbacks", "metadata", "speed"];
 
 // einfacher Zähler pro Worker-Instanz (kein harter Schutz; das eigentliche Limit ist das Ausgabenlimit in der Anthropic-Konsole)
 const counters = new Map();
@@ -60,6 +60,7 @@ export default {
     const clean = {};
     for (const f of ALLOWED_FIELDS) if (body[f] !== undefined) clean[f] = body[f];
     clean.max_tokens = Math.min(parseInt(clean.max_tokens, 10) || 4096, MAX_TOKENS);
+    if (clean.speed !== undefined && clean.speed !== "fast" && clean.speed !== "standard") delete clean.speed;
     if (JSON.stringify(clean).length > 400000) return reply(400, "Anfrage zu groß");
 
     const betas = (request.headers.get("anthropic-beta") || "").split(",").map((s) => s.trim()).filter((b) => ALLOWED_BETAS.includes(b));

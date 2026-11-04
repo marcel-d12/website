@@ -63,29 +63,63 @@ function client() {
   throw new EngineError("Kein Zugang zu Claude eingerichtet.", "setup");
 }
 
+// Fast Mode (bis zu 2,5-mal schnellere Ausgabe) ist eine Vorschau-Funktion. Ist sie für den Schlüssel nicht frei,
+// merkt sich die App das und fragt ohne sie.
+const fastState = {
+  get blocked() { return store.get("km-nofast") === "1"; },
+  block() { store.set("km-nofast", "1"); },
+};
+
 // Eine Anfrage an Claude mit Streaming. Liefert den Antworttext (bei Fallback nur den Teil des Modells, das geantwortet hat).
-export async function ask({ user, effort = "medium", maxTokens = CONFIG.maxTokens, schema = null, onText, onThinking, signal }) {
+// Bei Fehlern trägt der Fehler den bis dahin gestreamten Text (err.partialText), damit nichts verloren geht.
+export async function ask({ user, effort = "low", fast = true, maxTokens = CONFIG.maxTokens, schema = null, onText, onThinking, onPhase, signal }) {
+  const useFast = fast && !fastState.blocked;
+  try {
+    return await askOnce({ user, effort, fast: useFast, maxTokens, schema, onText, onThinking, onPhase, signal });
+  } catch (err) {
+    // Fast Mode nicht verfügbar oder ausgelastet, noch nichts erhalten: ohne Fast Mode wiederholen
+    const nothingYet = !err.partialText && !err.partialThinking;
+    if (useFast && nothingYet && err.kind !== "abort" && err.kind !== "auth" && (err.kind === "bad" || err.kind === "rate" || /speed|fast/i.test(err.message))) {
+      if (err.kind === "bad" || /speed|fast/i.test(err.message)) fastState.block();
+      return await askOnce({ user, effort, fast: false, maxTokens, schema, onText, onThinking, onPhase, signal });
+    }
+    throw err;
+  }
+}
+
+async function askOnce({ user, effort, fast, maxTokens, schema, onText, onThinking, onPhase, signal }) {
   const c = client();
   const outputConfig = { effort };
   if (schema) outputConfig.format = { type: "json_schema", schema };
+  const betas = ["server-side-fallback-2026-07-01"];
   const params = {
     model: CONFIG.model,
     max_tokens: maxTokens,
-    betas: ["server-side-fallback-2026-07-01"],
+    betas,
     fallbacks: "default",
     thinking: { type: "adaptive", display: "summarized" },
     output_config: outputConfig,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: user }],
   };
+  if (fast) { betas.push("fast-mode-2026-02-01"); params.speed = "fast"; }
   let text = "";
   let thinking = "";
+  let phase = "";
+  const setPhase = (p) => { if (p !== phase) { phase = p; onPhase && onPhase(p, fast); } };
+  setPhase("wait");
   try {
     const stream = c.beta.messages.stream(params, { signal });
     stream.on("streamEvent", (ev) => {
-      if (ev.type === "content_block_start" && ev.content_block && ev.content_block.type === "fallback") {
-        // anderes Modell übernimmt: bisherigen Text verwerfen
-        text = "";
+      // Die API meldet, mit welcher Geschwindigkeit sie tatsächlich arbeitet (der Proxy kann Turbo herausfiltern)
+      if (ev.type === "message_start" && fast && ev.message && ev.message.usage && ev.message.usage.speed && ev.message.usage.speed !== "fast") {
+        fast = false;
+        onPhase && onPhase(phase, false);
+      }
+      if (ev.type === "content_block_start" && ev.content_block) {
+        if (ev.content_block.type === "fallback") text = ""; // anderes Modell übernimmt: bisherigen Text verwerfen
+        if (ev.content_block.type === "thinking") setPhase("think");
+        if (ev.content_block.type === "text") setPhase("write");
       }
       if (ev.type === "content_block_delta") {
         if (ev.delta.type === "text_delta") { text += ev.delta.text; onText && onText(text); }
@@ -99,9 +133,12 @@ export async function ask({ user, effort = "medium", maxTokens = CONFIG.maxToken
     let startIdx = 0;
     blocks.forEach((b, i) => { if (b.type === "fallback") startIdx = i + 1; });
     const finalText = blocks.slice(startIdx).filter((b) => b.type === "text").map((b) => b.text).join("");
-    return { text: finalText || text, truncated: msg.stop_reason === "max_tokens", usage: msg.usage, model: msg.model };
+    return { text: finalText || text, truncated: msg.stop_reason === "max_tokens", usage: msg.usage, model: msg.model, fast };
   } catch (err) {
-    throw translateError(err);
+    const e = translateError(err);
+    e.partialText = text;
+    e.partialThinking = thinking;
+    throw e;
   }
 }
 
@@ -114,6 +151,8 @@ function translateError(err) {
   if (err instanceof Anthropic.RateLimitError) return new EngineError("Gerade zu viele Anfragen. Bitte eine Minute warten.", "rate");
   if (err instanceof Anthropic.BadRequestError) return new EngineError(`Anfrage abgelehnt: ${err.message}`, "bad");
   if (err instanceof Anthropic.APIConnectionError) return new EngineError("Keine Verbindung zum Server.", "network");
+  if (err instanceof Anthropic.APIError && /overload/i.test(err.message || "")) return new EngineError("Claude ist gerade überlastet. Bitte gleich nochmal versuchen.", "overload");
   if (err instanceof Anthropic.APIError) return new EngineError(`Fehler ${err.status || ""}: ${err.message}`, "api");
+  if (err && /network|fetch|stream|terminated|aborted|connection/i.test(err.message || "")) return new EngineError("Die Verbindung ist abgerissen.", "network");
   return new EngineError(err && err.message ? err.message : String(err), "unknown");
 }

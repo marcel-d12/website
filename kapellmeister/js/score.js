@@ -271,3 +271,65 @@ export function titleOf(abc) {
 export function fileSafe(name) {
   return (name || "kapellmeister").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "kapellmeister";
 }
+
+// Brauchbaren Teil einer abgebrochenen Antwort retten: unvollständige letzte Zeile und unvollständiges System weg
+export function partialAbc(text) {
+  const part = extractTag(text || "", "abc");
+  if (!part || !part.content) return null;
+  let abc = part.content;
+  if (!part.done) {
+    abc = abc.slice(0, abc.lastIndexOf("\n") + 1);
+    const lines = abc.split("\n");
+    const voiceCount = parseHeader(abc).voices.length;
+    let lastSys = -1;
+    lines.forEach((l, i) => { if (/^% T\./.test(l)) lastSys = i; });
+    if (lastSys >= 0 && voiceCount) {
+      const inLast = lines.slice(lastSys + 1).filter((l) => /^\[V:/.test(l)).length;
+      if (inLast < voiceCount) abc = lines.slice(0, lastSys).join("\n") + "\n";
+    }
+  }
+  const body = abc.split(/^K:.*$/m)[1] || "";
+  if (!/^K:/m.test(abc) || !/\|/.test(body)) return null;
+  return abc;
+}
+
+// Takt-Änderungen aus der Antwort lesen: <takt stimme="Vl1" nr="5">…</takt> (nur vollständige Tags)
+export function parsePatches(text) {
+  const out = [];
+  for (const m of (text || "").matchAll(/<takt\s+stimme="([^"]+)"\s+nr="(\d+)"\s*>([\s\S]*?)<\/takt>/g)) {
+    const content = m[3].replace(/\[V:[^\]]*\]/g, "").replace(/\|+\]?|\[\|/g, " ").replace(/\s+/g, " ").trim();
+    if (content) out.push({ voiceId: m[1].trim(), nr: +m[2], content });
+  }
+  return out;
+}
+
+// Takt-Änderungen in den ABC-Text einsetzen. Ersetzt wird alles zwischen den Taktstrichen des Taktes.
+export function applyPatches(abc, model, patches) {
+  const edits = [];
+  const failed = [];
+  for (const p of patches) {
+    const v = model.voices.findIndex((x) => x.id === p.voiceId);
+    const mm = p.nr - (model.hasPickup ? 0 : 1);
+    const cell = v >= 0 ? model.cells.get(`${v}:${mm}`) : null;
+    if (!cell) { failed.push(p); continue; }
+    const starts = cell.elements.map((e) => e.startChar).filter((x) => x >= 0);
+    const ends = cell.elements.map((e) => e.endChar).filter((x) => x >= 0);
+    if (!starts.length || !ends.length) { failed.push(p); continue; }
+    let s = Math.min(...starts);
+    let e = Math.max(...ends);
+    while (s > 0 && !"|]\n".includes(abc[s - 1]) && !(abc[s - 1] === ":" && /[|:]/.test(abc[s - 2] || ""))) s--;
+    while (e < abc.length && !"|\n".includes(abc[e]) && !(abc[e] === ":" && /[|:]/.test(abc[e + 1] || "")) && !(abc[e] === "[" && abc[e + 1] === "|")) e++;
+    edits.push({ s, e, text: ` ${p.content} `, p });
+  }
+  edits.sort((a, b) => b.s - a.s);
+  let out = abc;
+  let lastStart = Infinity;
+  let applied = 0;
+  for (const ed of edits) {
+    if (ed.e > lastStart) { failed.push(ed.p); continue; } // überlappt
+    out = out.slice(0, ed.s) + ed.text + out.slice(ed.e);
+    lastStart = ed.s;
+    applied++;
+  }
+  return { abc: out, applied, failed };
+}

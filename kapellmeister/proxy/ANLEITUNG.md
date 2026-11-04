@@ -38,6 +38,13 @@ https://marcelhorstmann.com/kapellmeister/#code=DEIN-CODE&proxy=https://kapellme
 Sobald `proxyUrl` eingetragen ist, reicht `https://marcelhorstmann.com/kapellmeister/#code=DEIN-CODE`. Der Code wird
 im Browser gespeichert und aus der Adresszeile entfernt. Oben rechts steht dann „Claude verbunden · Demo-Zugang“.
 
+## Worker aktualisieren
+
+Ändert sich `worker.js` (z. B. 04.11.: Turbo/Fast Mode freigeschaltet), im Cloudflare-Dashboard **Edit code** öffnen,
+alles durch den neuen Inhalt von
+https://raw.githubusercontent.com/marcel-d12/website/main/kapellmeister/proxy/worker.js ersetzen und **Deploy** klicken.
+Die Secrets bleiben erhalten.
+
 ## Kosten (Schätzung, Opus 5.5: 4 $ pro Million Eingabe-, 20 $ pro Million Ausgabe-Token)
 
 | Aktion | ungefähr |

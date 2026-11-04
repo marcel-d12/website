@@ -3,7 +3,7 @@ import { CONFIG } from "./config.js";
 import { COMPOSERS, FORMS, KEYS, METERS, TEMPI, EXPRESSION } from "./composers.js";
 import { ENSEMBLES, CUSTOM_CHOICES, buildStaves, scoreLine, voiceLines, SCORE_ORDER } from "./instruments.js";
 import { generatePrompt, revisePrompt, repairInstruction, suggestPrompt, SUGGEST_SCHEMA, continuePrompt, CONTINUE_DIRECTIONS, askPrompt } from "./prompts.js";
-import { extractTag, normalizeAbc, renderScore, buildModel, excerpt, appendContinuation, withBarComments, stripSetup, titleOf, fileSafe } from "./score.js";
+import { extractTag, normalizeAbc, renderScore, buildModel, excerpt, appendContinuation, withBarComments, stripSetup, titleOf, fileSafe, partialAbc, parsePatches, applyPatches } from "./score.js";
 import { checkScore, summarize } from "./checker.js";
 import { toMusicXML } from "./musicxml.js";
 import { ask, access, readAccessFromHash, EngineError } from "./claude.js";
@@ -30,8 +30,10 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* voll oder privat */ } },
 };
 
-const settings = Object.assign({ effort: "medium", sound: "standard", autoRepair: true, counterpoint: true, volume: 80 }, store.get("km-settings", {}));
+const settings = Object.assign({ effort: "low", fast: true, sound: "standard", autoRepair: true, counterpoint: true, volume: 80 }, store.get("km-settings", {}));
 const saveSettings = () => store.set("km-settings", settings);
+// Umstellung 04.11.: schneller als Standard (weniger Nachdenken, Fast Mode)
+if (!settings.v2) { settings.effort = "low"; settings.fast = true; settings.v2 = true; saveSettings(); }
 
 const state = {
   abc: null, vo: null, model: null, issues: [],
@@ -54,7 +56,8 @@ function fillForm() {
   $("#fForm").value = "Menuett mit Trio";
   for (const [k, e] of Object.entries(ENSEMBLES)) $("#fEnsemble").append(h("option", { value: k }, e.label));
   $("#fEnsemble").append(h("option", { value: "eigene" }, "Eigene Besetzung …"));
-  $("#fEnsemble").value = "klassisch";
+  $("#fEnsemble").value = "streichquartett";
+  $("#fBars").value = "8";
   KEYS.forEach(([v, l]) => $("#fKey").append(h("option", { value: v }, l)));
   METERS.forEach((m) => $("#fMeter").append(h("option", { value: m }, m || "frei wählen")));
   TEMPI.forEach((t) => $("#fTempo").append(h("option", { value: t }, t || "frei wählen")));
@@ -440,6 +443,8 @@ function toast(msg, kind = "info") {
   setTimeout(() => t.remove(), kind === "error" ? 9000 : 5000);
 }
 
+const PHASES = { wait: "verbindet …", think: "plant …", write: "schreibt die Noten …" };
+
 async function runClaude({ title, user, schema = null, live = false, maxTokens }) {
   state.abort = new AbortController();
   setBusy(true, title);
@@ -448,15 +453,20 @@ async function runClaude({ title, user, schema = null, live = false, maxTokens }
   const timer = setInterval(() => { $("#statusTime").textContent = `${Math.round((Date.now() - started) / 1000)} s`; }, 1000);
   try {
     const res = await ask({
-      user, schema, effort: settings.effort, maxTokens, signal: state.abort.signal,
+      user, schema, effort: settings.effort, fast: settings.fast, maxTokens, signal: state.abort.signal,
       onThinking: thinkingText,
+      onPhase: (p, fast) => { $("#statusTitle").textContent = `${title.replace(/ …$/, "")}: ${PHASES[p] || ""}${fast ? " (Turbo)" : ""}`; },
       onText: (t) => {
-        status(`${t.length.toLocaleString("de-DE")} Zeichen geschrieben`);
+        const patches = (t.match(/<\/takt>/g) || []).length;
+        status(patches ? `${patches} Takte überarbeitet` : `${t.length.toLocaleString("de-DE")} Zeichen geschrieben`);
         if (live && Date.now() - lastRender > 1200) { lastRender = Date.now(); renderPartial(t); }
       },
     });
     if (res.truncated) toast("Die Antwort wurde abgeschnitten (zu lang). Kürzere Länge oder kleinere Besetzung wählen.", "error");
     return res;
+  } catch (err) {
+    err.seconds = Math.round((Date.now() - started) / 1000);
+    throw err;
   } finally {
     clearInterval(timer);
     setBusy(false);
@@ -464,11 +474,42 @@ async function runClaude({ title, user, schema = null, live = false, maxTokens }
   }
 }
 
-function handleError(err) {
-  if (err instanceof EngineError && err.kind === "abort") { toast("Abgebrochen."); if (state.abc) render(); return; }
+function handleError(err, kept = false) {
+  const after = err.seconds ? ` nach ${err.seconds} s` : "";
+  const keptText = kept ? " Das bisher Geschriebene steht als eigene Version im Verlauf." : "";
+  if (err instanceof EngineError && err.kind === "abort") { toast(`Abgebrochen${after}.${keptText}`, kept ? "warn" : "info"); if (!kept && state.abc) render(); return; }
   if (err instanceof EngineError && (err.kind === "setup" || err.kind === "auth")) openSettings(err.message);
-  else toast(err.message || String(err), "error");
-  if (state.abc) render();
+  else toast(`${err.message || String(err)}${after ? ` (${after.trim()})` : ""}${keptText}`, "error");
+  if (!kept && state.abc) render();
+}
+
+// Bei Abbruch: geschriebenen Teil einer Komposition als Version behalten
+function keepPartialScore(err, label) {
+  const abc = partialAbc(err && err.partialText);
+  if (!abc) return false;
+  try {
+    setAbc(normalizeAbc(abc), { kind: "teilergebnis", label: `${label} (abgebrochen)`, notes: "Abgebrochenes Teilergebnis. Mit „Weiter“ lässt es sich fortsetzen." });
+    return true;
+  } catch (e) { return false; }
+}
+
+// Antwort einer Überarbeitung übernehmen: vollständige Datei oder einzelne Takte
+function applyRevision(text, meta, partial = false) {
+  const full = extractTag(text, "abc");
+  if (full && full.content && (full.done || partial)) {
+    const abc = partial ? partialAbc(text) : full.content;
+    if (!abc) return false;
+    setAbc(normalizeAbc(abc), meta);
+    return true;
+  }
+  const patches = parsePatches(text);
+  if (!patches.length) return false;
+  const r = applyPatches(state.abc, state.model, patches);
+  if (!r.applied) return false;
+  const changes = extractTag(text, "aenderungen");
+  setAbc(normalizeAbc(r.abc), { ...meta, changes: (changes && changes.content) || `${r.applied} Takte geändert` });
+  if (r.failed.length) toast(`${r.failed.length} Takt-Änderungen ließen sich nicht zuordnen.`, "warn");
+  return true;
 }
 
 async function compose() {
@@ -484,7 +525,11 @@ async function compose() {
     setAbc(normalizeAbc(abc.content), { kind: "neu", label: `Neu: ${f.form}, ${f.composer.name}`, notes: notiz ? notiz.content : "" });
     $("#composeCard").open = false;
     await maybeAutoRepair();
-  } catch (err) { handleError(err); }
+  } catch (err) {
+    const kept = keepPartialScore(err, `Neu: ${f.form}, ${f.composer.name}`);
+    if (kept) $("#composeCard").open = false;
+    handleError(err, kept);
+  }
 }
 
 async function maybeAutoRepair() {
@@ -505,14 +550,16 @@ async function repair(list, auto = false) {
       user: revisePrompt({ abc: promptAbc(), voices: state.model.voices, markings: [], instruction: repairInstruction(), issues }),
       live: true,
     });
-    const abc = extractTag(res.text, "abc");
-    if (!abc || !abc.content) throw new EngineError("Die Antwort enthielt keine Noten.", "format");
-    const changes = extractTag(res.text, "aenderungen");
     const before = state.issues.filter((x) => x.severity === "error").length;
-    setAbc(normalizeAbc(abc.content), { kind: "korrektur", label: auto ? "Automatische Korrektur" : "Korrektur nach Prüfung", changes: changes ? changes.content : "" });
+    const changes = extractTag(res.text, "aenderungen");
+    const meta = { kind: "korrektur", label: auto ? "Automatische Korrektur" : "Korrektur nach Prüfung", changes: changes ? changes.content : "" };
+    if (!applyRevision(res.text, meta)) throw new EngineError("Die Antwort enthielt keine Änderungen.", "format");
     const after = state.issues.filter((x) => x.severity === "error").length;
     toast(`Korrektur fertig: ${before} → ${after} Fehler.`, after ? "warn" : "ok");
-  } catch (err) { handleError(err); }
+  } catch (err) {
+    const kept = !!(err.partialText && applyRevision(err.partialText, { kind: "teilergebnis", label: "Korrektur (abgebrochen)" }, true));
+    handleError(err, kept);
+  }
 }
 
 async function revise() {
@@ -525,14 +572,15 @@ async function revise() {
       user: revisePrompt({ abc: promptAbc(), voices: state.model.voices, markings: state.markings, instruction, issues: [] }),
       live: true,
     });
-    const abc = extractTag(res.text, "abc");
-    if (!abc || !abc.content) throw new EngineError("Die Antwort enthielt keine Noten.", "format");
     const changes = extractTag(res.text, "aenderungen");
     const label = instruction ? `Überarbeitet: ${instruction.slice(0, 40)}${instruction.length > 40 ? "…" : ""}` : `Überarbeitet (${state.markings.length} Anmerkungen)`;
+    if (!applyRevision(res.text, { kind: "überarbeitet", label, changes: changes ? changes.content : "" })) throw new EngineError("Die Antwort enthielt keine Änderungen.", "format");
     $("#reviseText").value = "";
-    setAbc(normalizeAbc(abc.content), { kind: "überarbeitet", label, changes: changes ? changes.content : "" });
     await maybeAutoRepair();
-  } catch (err) { handleError(err); }
+  } catch (err) {
+    const kept = !!(err.partialText && applyRevision(err.partialText, { kind: "teilergebnis", label: "Überarbeitung (abgebrochen)" }, true));
+    handleError(err, kept);
+  }
 }
 
 async function suggest() {
@@ -616,7 +664,7 @@ async function continueGame() {
   await Promise.all(CONTINUE_DIRECTIONS.map(async (d, i) => {
     const pane = panes.children[i];
     try {
-      const res = await ask({ user: continuePrompt({ abc: base, voices: state.model.voices, bars, firstBar, direction: d }), effort: settings.effort, maxTokens: 16000, signal: state.abort.signal,
+      const res = await ask({ user: continuePrompt({ abc: base, voices: state.model.voices, bars, firstBar, direction: d }), effort: settings.effort, fast: settings.fast, maxTokens: 16000, signal: state.abort.signal,
         onThinking: (t) => { $(".cont-status", pane).textContent = "Claude überlegt: " + t.replace(/\s+/g, " ").slice(-140); } });
       const cont = extractTag(res.text, "abc");
       const note = extractTag(res.text, "notiz");
@@ -670,7 +718,7 @@ async function askQuestion() {
   try {
     state.abort = new AbortController();
     setBusy(true, "Claude beantwortet die Frage …");
-    const res = await ask({ user: askPrompt({ abc: promptAbc(), voices: state.model.voices, question: q, markings: state.markings }), effort: settings.effort, maxTokens: 12000, signal: state.abort.signal,
+    const res = await ask({ user: askPrompt({ abc: promptAbc(), voices: state.model.voices, question: q, markings: state.markings }), effort: settings.effort, fast: settings.fast, maxTokens: 12000, signal: state.abort.signal,
       onText: (t) => { answer.replaceChildren(...mdLite(t)); } });
     answer.replaceChildren(...mdLite(res.text));
   } catch (err) {
@@ -842,6 +890,7 @@ function openSettings(reason = "") {
   $("#setKey").value = access.apiKey;
   $("#setProxy").value = access.proxyUrl;
   $("#setEffort").value = settings.effort;
+  $("#setFast").checked = settings.fast;
   $("#setSound").value = settings.sound;
   $("#setAutoRepair").checked = settings.autoRepair;
   $("#setCounterpoint").checked = settings.counterpoint;
@@ -856,6 +905,7 @@ function saveSettingsDialog() {
   const soundChanged = settings.sound !== $("#setSound").value;
   const cpChanged = settings.counterpoint !== $("#setCounterpoint").checked;
   settings.effort = $("#setEffort").value;
+  settings.fast = $("#setFast").checked;
   settings.sound = $("#setSound").value;
   settings.autoRepair = $("#setAutoRepair").checked;
   settings.counterpoint = $("#setCounterpoint").checked;

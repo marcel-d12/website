@@ -120,13 +120,15 @@ export function revisePrompt({ abc, voices, markings, instruction, issues }) {
   if (it) parts.push(it, "");
   parts.push("Ändere nur, was die Anmerkungen, der Wunsch oder die Probleme verlangen. Alles andere bleibt Note für Note gleich, ebenso Kopfzeilen, Stimmen und Taktanzahl, sofern der Wunsch nichts anderes verlangt.");
   parts.push("");
-  parts.push("Antworte so:");
-  parts.push("<abc>");
-  parts.push("vollständige überarbeitete ABC-Datei");
-  parts.push("</abc>");
+  parts.push("Antworte möglichst knapp: Gib nur die geänderten Takte zurück, jeden Takt einer Stimme einzeln:");
+  parts.push("<takte>");
+  parts.push('<takt stimme="Vl1" nr="5">!p!(d2 e2) f2</takt>');
+  parts.push("</takte>");
   parts.push("<aenderungen>");
   parts.push("- kurze Liste der Änderungen auf Deutsch, jeweils mit Takt und Stimme");
   parts.push("</aenderungen>");
+  parts.push("Regeln: „stimme“ ist die ID aus den V:-Zeilen, „nr“ die Taktnummer wie in den Kommentarzeilen % T. (bei „% T. 5–8“ ist der erste Takt der Zeile Takt 5). Der Inhalt ist genau ein vollständiger Takt dieser Stimme ohne Taktstriche, mit voller Taktdauer. Bögen und Gabeln, die über Taktgrenzen gehen, nur verwenden, wenn auch die Nachbartakte passen.");
+  parts.push("Nur wenn du Takte hinzufügst oder entfernst, Kopfzeilen änderst oder mehr als die Hälfte aller Takte umschreibst, antworte stattdessen mit der vollständigen Datei: <abc>…</abc> und danach <aenderungen>…</aenderungen>.");
   return parts.join("\n");
 }
 

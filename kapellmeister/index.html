@@ -33,12 +33,12 @@
         <label>Tonart<select id="fKey"></select></label>
         <label>Taktart<select id="fMeter"></select></label>
         <label>Tempo<select id="fTempo"></select></label>
-        <label>Länge<select id="fBars"><option value="8">8 Takte</option><option value="12">12 Takte</option><option value="16" selected>16 Takte</option><option value="24">24 Takte</option><option value="32">32 Takte</option></select></label>
+        <label>Länge<select id="fBars"><option value="8" selected>8 Takte</option><option value="12">12 Takte</option><option value="16">16 Takte</option><option value="24">24 Takte</option><option value="32">32 Takte</option></select></label>
         <label>Vortragszeichen<select id="fExpression"></select></label>
         <fieldset id="customEnsemble" class="custom" hidden><legend>Eigene Besetzung</legend></fieldset>
         <div class="compose-bottom">
           <label class="wish">Wunsch an Claude (optional)<textarea id="fWish" rows="1" placeholder="z. B. Thema zuerst in der Oboe, Mittelteil in Moll, Pizzicato-Begleitung"></textarea></label>
-          <div class="compose-go"><button id="btnCompose" class="primary big" type="button" data-claude>Komponieren</button><span class="hint">dauert 1 bis 3 Minuten</span></div>
+          <div class="compose-go"><button id="btnCompose" class="primary big" type="button" data-claude>Komponieren</button><span class="hint">kleine Besetzung geht am schnellsten</span></div>
         </div>
       </form>
     </details>
@@ -170,7 +170,8 @@
       </fieldset>
       <fieldset>
         <legend>Komposition</legend>
-        <label>Gründlichkeit<select id="setEffort"><option value="low">schnell</option><option value="medium">ausgewogen</option><option value="high">gründlich (langsamer)</option></select></label>
+        <label>Nachdenken vor dem Schreiben<select id="setEffort"><option value="low">kurz (schnell, Standard)</option><option value="medium">mittel</option><option value="high">gründlich (deutlich langsamer)</option></select></label>
+        <label class="check"><input id="setFast" type="checkbox"> Turbo: bis zu 2,5-mal schnellere Ausgabe (doppelte Kosten, falls verfügbar)</label>
         <label class="check"><input id="setAutoRepair" type="checkbox"> Nach jeder Komposition prüfen und Fehler automatisch korrigieren</label>
         <label class="check"><input id="setCounterpoint" type="checkbox"> Satzlehre-Hinweise (Quint- und Oktavparallelen)</label>
       </fieldset>
